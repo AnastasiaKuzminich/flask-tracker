@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tracking</title>
+</head>
+<body>
+    <h2>Tracking site: {{ site }}</h2>
+    <iframe id="siteFrame" src="{{ site }}" width="100%" height="600px"></iframe>
+
+    <script>
+        const userId = "{{ user_id }}";
+        const site = "{{ site }}";
+        const iframe = document.getElementById("siteFrame");
+
+        function sendEvent(type, data) {
+            fetch("/event", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    site: site,
+                    event_type: type,
+                    event_data: data
+                })
+            });
+        }
+
+        const startTime = Date.now();
+
+        window.addEventListener("beforeunload", () => {
+            const timeSpent = (Date.now() - startTime) / 1000;
+            sendEvent("time_spent", { seconds: timeSpent });
+        });
+
+        iframe.onload = () => {
+            try {
+                const iframeDoc = iframe.contentWindow.document;
+
+                iframeDoc.addEventListener("click", (e) => {
+                    sendEvent("click", { x: e.clientX, y: e.clientY });
+                });
+
+                iframeDoc.addEventListener("input", (e) => {
+                    sendEvent("input", { value: e.target.value || null });
+                });
+
+                iframeDoc.addEventListener("scroll", () => {
+                    sendEvent("scroll", { scrollY: iframeDoc.documentElement.scrollTop });
+                });
+            } catch (err) {
+                console.warn("Невозможно получить доступ к содержимому iframe (CORS):", err);
+            }
+        };
+    </script>
+</body>
+</html>
